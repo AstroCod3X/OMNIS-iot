@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNIS // IoT Control Center</title>
+    <style>
+        :root {
+            --bg-dark: #0B0F19; --bg-card: #151B2D; --bg-input: #0E1322;
+            --accent-blue: #0284C7; --accent-cyan: #38BDF8; --accent-emerald: #10B981; --accent-rose: #EF4444;
+            --border-slate: #1E293B; --text-light: #F8FAFC; --text-dim: #94A3B8;
+        }
+        body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg-dark); color: var(--text-light); -webkit-font-smoothing: antialiased; }
+        
+        /* Account Portal Styling */
+        .portal-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .portal-card { background-color: var(--bg-card); border: 1px solid var(--border-slate); padding: 35px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .portal-card h2 { margin: 0 0 8px 0; font-size: 22px; font-weight: 800; text-align: center; }
+        .portal-card h2 span { color: var(--accent-cyan); }
+        .portal-desc { text-align: center; color: var(--text-dim); font-size: 13px; margin-bottom: 25px; }
+        
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .form-group input { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border-slate); border-radius: 8px; color: #FFF; font-size: 14px; box-sizing: border-box; }
+        .form-group input:focus { border-color: var(--accent-cyan); outline: none; }
+        
+        .btn-prime { width: 100%; padding: 12px; background: var(--accent-blue); border: none; border-radius: 8px; color: #FFF; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+        .btn-prime:hover { background: var(--accent-cyan); color: #000; }
+        .switch-prompt { text-align: center; margin-top: 20px; font-size: 12px; color: var(--text-dim); }
+        .switch-prompt span { color: var(--accent-cyan); cursor: pointer; text-decoration: underline; }
+
+        /* Main Workspace App Layout */
+        #app-workspace { display: none; }
+        .top-navbar { background-color: var(--bg-card); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-slate); }
+        .top-navbar h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.5px; }
+        .top-navbar h1 span { color: var(--accent-cyan); }
+        .btn-logout { background: transparent; border: 1px solid var(--accent-rose); color: var(--accent-rose); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; }
+        .btn-logout:hover { background: var(--accent-rose); color: #FFF; }
+
+        .layout-grid { display: grid; grid-template-columns: 340px 1fr; gap: 30px; max-width: 1500px; margin: 30px auto; padding: 0 20px; }
+        
+        /* Device Sidebar Controller */
+        .sidebar-card { background-color: var(--bg-card); border: 1px solid var(--border-slate); border-radius: 12px; padding: 20px; }
+        .sidebar-card h3 { margin-top: 0; font-size: 12px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 15px; }
+        .device-stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px; max-height: 200px; overflow-y: auto; }
+        .device-btn { padding: 12px; background: var(--bg-input); border: 1px solid var(--border-slate); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; color: var(--text-dim); }
+        .device-btn:hover { border-color: var(--accent-cyan); color: #FFF; }
+        .device-btn.active-focus { background: rgba(56, 189, 248, 0.08); border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+        .panel-divider { border-top: 1px solid var(--border-slate); margin: 20px 0; }
+
+        /* Setup Token Warning Drawer */
+        .token-alert-drawer { background: rgba(16, 185, 129, 0.05); border: 1px dashed var(--accent-emerald); padding: 15px; border-radius: 8px; font-size: 12px; margin-top: 15px; display: none; }
+        .token-alert-drawer strong { color: var(--accent-emerald); display: block; margin-bottom: 4px; }
+        .token-container { display: flex; gap: 5px; margin-top: 8px; }
+        .token-container code { flex-grow: 1; background: #000; padding: 6px; border-radius: 4px; color: #FFF; font-size: 11px; word-break: break-all; }
+        .btn-copy { background: var(--accent-emerald); border: none; color: #000; padding: 0 10px; border-radius: 4px; font-weight: 700; font-size: 11px; cursor: pointer; }
+
+        /* Dynamic Visual Telemetry Workspace */
+        .workspace-stack { display: flex; flex-direction: column; gap: 25px; }
+        .context-header { background: var(--bg-card); border: 1px solid var(--border-slate); padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .context-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+        .status-dot { font-size: 11px; font-weight: 700; color: var(--accent-emerald); display: flex; align-items: center; gap: 6px; }
+        .status-dot::before { content:''; width: 6px; height: 6px; background: var(--accent-emerald); border-radius: 50%; display: inline-block; }
+
+        .cards-matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        .metric-card { background-color: var(--bg-card); border: 1px solid var(--border-slate); padding: 20px; border-radius: 12px; border-top: 3px solid var(--accent-cyan); }
+        .metric-card .lbl { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; }
+        .metric-card .val { font-size: 32px; font-weight: 800; margin-top: 8px; font-family: monospace; }
+
+        /* Instructions Firmware Blueprint Block */
+        .instruction-box { background: #070B14; border: 1px solid var(--border-slate); border-radius: 12px; padding: 20px; }
+        .instruction-box h4 { margin: 0 0 8px 0; font-size: 13px; color: var(--accent-cyan); text-transform: uppercase; }
+        .instruction-box p { margin: 0 0 15px 0; font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+        .instruction-box pre { margin: 0; background: #000; padding: 15px; border-radius: 8px; color: #A7F3D0; font-family: monospace; font-size: 12px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+    <div id="app-auth-portal" class="portal-container">
+        <div class="portal-card">
+            <div id="box-login">
+                <h2>OMNIS // <span>LOGIN</span></h2>
+                <div class="portal-desc">Sign in to monitor your active hardware nodes.</div>
+                <div class="form-group"><label>Email Address</label><input type="email" id="log-email" placeholder="name@domain.com"></div>
+                <div class="form-group"><label>Password</label><input type="password" id="log-pass" placeholder="••••••••"></div>
+                <button class="btn-prime" onclick="handleLogin()">CONNECT TO PLATFORM</button>
+                <div class="switch-prompt">New operator? <span onclick="toggleAuth(true)">Create Account</span></div>
+            </div>
+            <div id="box-signup" style="display: none;">
+                <h2>OMNIS // <span>REGISTER</span></h2>
+                <div class="portal-desc">Create a profile to provision secure hardware tokens.</div>
+                <div class="form-group"><label>Username</label><input type="text" id="sig-name" placeholder="developer_1"></div>
+                <div class="form-group"><label>Email Address</label><input type="email" id="sig-email" placeholder="name@domain.com"></div>
+                <div class="form-group"><label>Password (Min 6 chars)</label><input type="password" id="sig-pass" placeholder="••••••••"></div>
+                <button class="btn-prime" style="background: var(--accent-emerald); color:#000;" onclick="handleSignup()">CREATE ACCOUNT</button>
+                <div class="switch-prompt">Have an account? <span onclick="toggleAuth(false)">Log In</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-workspace">
+        <div class="top-navbar">
+            <h1>OMNIS // <span>TELEMETRY METRIC HUB</span></h1>
+            <button class="btn-logout" onclick="handleLogout()">DISCONNECT SESSION</button>
+        </div>
+
+        <div class="layout-grid">
+            <div class="sidebar-card">
+                <h3>Hardware Devices</h3>
+                <div class="device-stack" id="dom-device-list"></div>
+                
+                <div class="panel-divider"></div>
+                
+                <h3>Add New Device</h3>
+                <div class="form-group"><label>Device Unique ID</label><input type="text" id="dev-new-id" placeholder="ESP32_ROOM_01" style="padding:10px; font-size:12px;"></div>
+                <div class="form-group"><label>Friendly Name Alias</label><input type="text" id="dev-new-name" placeholder="Living Room Node" style="padding:10px; font-size:12px;"></div>
+                <button class="btn-prime" style="background: var(--accent-emerald); color: #000; padding:10px; font-size:12px;" onclick="handleCreateDevice()">Add DEVICE</button>
+
+                <div class="token-alert-drawer" id="dom-token-drawer">
+                    <strong>🔑 SECURE HARDWARE API TOKEN:</strong>
+                    Copy this secret token and paste it directly into your ESP32 / Arduino firmware code. It will never be shown again!
+                    <div class="token-container">
+                        <code id="dom-token-string"></code>
+                        <button class="btn-copy" onclick="copyTokenToClipboard()">COPY</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workspace-stack">
+                <div class="context-header">
+                    <h2 id="dom-current-node-lbl">No Hardware Node Selected</h2>
+                    <div class="status-dot" id="dom-status-badge" style="display:none;">LIVE PACKET TUNNEL</div>
+                </div>
+
+                <div class="cards-matrix" id="dom-metrics-grid">
+                    <div style="grid-column: span 3; color: var(--text-dim); text-align:center; padding: 40px; background: var(--bg-card); border-radius:12px; border: 1px dashed var(--border-slate);">
+                        Select an hardware device from the left panel tracking list to monitor real-time data streams.
+                    </div>
+                </div>
+
+                <div class="instruction-box" id="dom-instruction-panel" style="display:none;">
+                    <h4>🚀 Microcontroller Integration Guide</h4>
+                    <p>To stream real-time environmental metrics directly into this dashboard window, configure your Arduino or ESP32 client runtime firmware engine to dispatch HTTP POST packets structured exactly like the JSON blueprint below:</p>
+                    <pre><code id="dom-code-blueprint"></code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let livePipelineTimerToken = null;
+        let targetedActiveNodeId = null;
+
+        function toggleAuth(showSignup) {
+            document.getElementById('box-login').style.display = showSignup ? 'none' : 'block';
+            document.getElementById('box-signup').style.display = showSignup ? 'block' : 'none';
+        }
+
+        async function handleSignup() {
+            const username = document.getElementById('sig-name').value.trim();
+            const email = document.getElementById('sig-email').value.trim();
+            const password = document.getElementById('sig-pass').value;
+            const res = await fetch('http://localhost:3000/api/v1/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password })});
+            if (res.ok) { alert("Registration complete! Welcome aboard."); toggleAuth(false); } else { alert((await res.json()).error); }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('log-email').value.trim();
+            const password = document.getElementById('log-pass').value;
+            const res = await fetch('http://localhost:3000/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })});
+            const data = await res.json();
+            if (res.ok) { localStorage.setItem('omni_jwt', data.sessionToken); initDashboardWorkspace(); } else { alert(data.error); }
+        }
+
+        function initDashboardWorkspace() {
+            document.getElementById('app-auth-portal').style.display = 'none';
+            document.getElementById('app-workspace').style.display = 'block';
+            updateDevicesSidebarIndex();
+            livePipelineTimerToken = setInterval(pollTelemetryStream, 2000);
+        }
+
+        async function updateDevicesSidebarIndex() {
+            const token = localStorage.getItem('omni_jwt');
+            const res = await fetch('http://localhost:3000/api/v1/devices', { method: 'GET', headers: { 'Authorization': `Bearer ${token}` }});
+            if (!res.ok) return;
+            const devices = await res.json();
+            
+            const listContainer = document.getElementById('dom-device-list');
+            listContainer.innerHTML = '';
+            
+            devices.forEach(dev => {
+                const isActiveFocus = dev.device_id === targetedActiveNodeId;
+                listContainer.innerHTML += `<button class="device-btn ${isActiveFocus ? 'active-focus' : ''}" onclick="setWorkspaceFocus('${dev.device_id}')">📟 ${dev.device_name} [${dev.device_id}]</button>`;
+            });
+        }
+
+        async function handleCreateDevice() {
+            const token = localStorage.getItem('omni_jwt');
+            const device_id = document.getElementById('dev-new-id').value.trim();
+            const device_name = document.getElementById('dev-new-name').value.trim();
+
+            const res = await fetch('http://localhost:3000/api/v1/devices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ device_id, device_name })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('dom-token-drawer').style.display = 'block';
+                document.getElementById('dom-token-string').innerText = data.plaintext_secret_token;
+                updateDevicesSidebarIndex();
+            } else { alert(data.error); }
+        }
+
+        function setWorkspaceFocus(deviceId) {
+            targetedActiveNodeId = deviceId;
+            document.getElementById('dom-current-node-lbl').innerText = `Device: ${deviceId}`;
+            document.getElementById('dom-status-badge').style.display = 'block';
+            document.getElementById('dom-instruction-panel').style.display = 'block';
+            document.getElementById('dom-token-drawer').style.display = 'none';
+
+            document.getElementById('dom-code-blueprint').innerText = JSON.stringify({
+                url_endpoint: "http://localhost:3000/api/v1/data",
+                method: "POST",
+                payload: { device_id: targetedActiveNodeId, token: "PASTE_Api_TOKEN_HERE", temperature: 24.5, humidity: 60.2 }
+            }, null, 4);
+
+            updateDevicesSidebarIndex();
+            pollTelemetryStream();
+        }
+
+        async function pollTelemetryStream() {
+            if (!targetedActiveNodeId) return;
+            const token = localStorage.getItem('omni_jwt');
+            try {
+                const res = await fetch(`http://localhost:3000/api/v1/data/${targetedActiveNodeId}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}` }});
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                const grid = document.getElementById('dom-metrics-grid');
+                if (data.metrics && Object.keys(data.metrics).length > 0) {
+                    grid.innerHTML = '';
+                    for (const [key, value] of Object.entries(data.metrics)) {
+                        grid.innerHTML += `<div class="metric-card"><div class="lbl">${key.replace('_',' ')}</div><div class="val">${value}</div></div>`;
+                    }
+                } else {
+                    grid.innerHTML = `<div style="grid-column: span 3; color:var(--text-dim); text-align:center; padding:20px;">Awaiting active data connection packet payload from microcontroller core...</div>`;
+                }
+            } catch (err) {}
+        }
+
+        function copyTokenToClipboard() {
+            const tokenText = document.getElementById('dom-token-string').innerText;
+            navigator.clipboard.writeText(tokenText);
+            alert("Token string written to clipboard buffers successfully!");
+        }
+
+        function handleLogout() {
+            clearInterval(livePipelineTimerToken);
+            localStorage.removeItem('omni_jwt');
+            document.getElementById('app-workspace').style.display = 'none';
+            document.getElementById('app-auth-portal').style.display = 'flex';
+        }
+
+        if (localStorage.getItem('omni_jwt')) { initDashboardWorkspace(); }
+    </script>
+</body>
+</html>

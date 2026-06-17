@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS - Real-Time Core Ecosystem Terminal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg-main: #0B0F19; --bg-card: #151D30; --accent: #00F0FF; --text-muted: #64748B;
+        }
+        body {
+            margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-main); color: #F8FAFC; overflow-x: hidden;
+        }
+        header {
+            background-color: var(--bg-card); padding: 15px 30px; display: flex;
+            justify-content: space-between; align-items: center; border-bottom: 2px solid #1E293B;
+        }
+        header h1 { margin: 0; font-size: 20px; letter-spacing: 1px; color: var(--accent); }
+        .live-indicator { background: rgba(0, 240, 255, 0.1); padding: 6px 12px; border-radius: 20px; font-size: 12px; color: var(--accent); border: 1px solid var(--accent); font-weight: bold; }
+        .layout-grid { display: grid; grid-template-columns: 1fr 400px; height: calc(100vh - 56px); }
+        #map-canvas { background: #111424; width: 100%; height: 100%; }
+        .side-panel { background-color: var(--bg-card); padding: 25px; border-left: 2px solid #1E293B; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .section-title { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 5px; }
+        .card { background: #1E293B; padding: 20px; border-radius: 12px; border: 1px solid #334155; position: relative; }
+        .card-label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        .card-value { font-size: 28px; font-weight: bold; color: #FFF; margin-top: 8px; }
+        .card-footer { font-size: 11px; color: var(--accent); margin-top: 10px; display: flex; align-items: center; gap: 5px; }
+        #telemetry-display { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: span 2; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>NEXUS // STREAM CORE</h1>
+        <div class="live-indicator">● LIVE NETWORK ACTIVE</div>
+    </header>
+
+    <div class="layout-grid">
+        <div id="map-canvas"></div>
+        
+        <div class="side-panel">
+            <div>
+                <div class="section-title">Hardware Active Context</div>
+                <div class="card full-width">
+                    <div class="card-label">CURRENT DEVICE ARCHITECTURE NODE</div>
+                    <div class="card-value" id="lbl-device-id">CONNECTING...</div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Dynamic Telemetry Stream</div>
+                <div id="telemetry-display">
+                    <div class="card full-width"><div class="card-label">SYSTEM MESSAGE</div><div class="card-value" style="font-size:16px; color:var(--text-muted);">Awaiting incoming tracking transmissions...</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Leaflet Map centered over custom coordinates layout
+        const map = L.map('map-canvas').setView([33.6844, 73.0479], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '©OpenStreetMap, ©CartoDB'
+        }).addTo(map);
+
+        let trackingMarker = L.marker([33.6844, 73.0479]).addTo(map);
+
+        async function refreshDashboardCore() {
+            try {
+                const response = await fetch('http://localhost:3000/api/v1/data/NODE_TEST_01');
+                if (!response.ok) return;
+                const stream = await response.json();
+
+                document.getElementById('lbl-device-id').innerText = stream.device_id;
+                const displayArea = document.getElementById('telemetry-display');
+
+                if (stream.metrics && Object.keys(stream.metrics).length > 0) {
+                    displayArea.innerHTML = ''; // Wipe stale visual metrics templates
+                    
+                    // Track coordinates variables conditionally to reposition tracking pins smoothly
+                    if(stream.metrics.latitude && stream.metrics.longitude) {
+                        const lat = parseFloat(stream.metrics.latitude);
+                        const lon = parseFloat(stream.metrics.longitude);
+                        trackingMarker.setLatLng([lat, lon]);
+                        map.setView([lat, lon], map.getZoom());
+                    }
+
+                    // Dynamically generate UI modular component cards for whatever data fields arrive
+                    for (const [key, value] of Object.entries(stream.metrics)) {
+                        let unitSign = "";
+                        if (key.toLowerCase().includes('temp')) unitSign = " °C";
+                        else if (key.toLowerCase().includes('humidity')) unitSign = " %";
+                        else if (key.toLowerCase().includes('speed')) unitSign = " km/h";
+
+                        const gridStyle = (key === 'latitude' || key === 'longitude') ? '' : 'full-width';
+
+                        displayArea.innerHTML += `
+                            <div class="card ${gridStyle}">
+                                <div class="card-label">${key.toUpperCase()}</div>
+                                <div class="card-value">${value}${unitSign}</div>
+                                <div class="card-footer">⚡ processed parameter securely</div>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error("Dashboard engine data interface breakdown:", error);
+            }
+        }
+
+        // Poll API stream loop framework updates cleanly every 2.5 seconds
+        setInterval(refreshDashboardCore, 2500);
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNI Core - Universal IoT Data Stream Terminal</title>
+    <style>
+        :root {
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --accent-cyan: #38BDF8;
+            --border-slate: #334155;
+            --text-light: #F8FAFC;
+            --text-dim: #94A3B8;
+        }
+        body {
+            margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark); color: var(--text-light);
+        }
+        .navbar {
+            background-color: var(--bg-card); padding: 20px 40px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-slate);
+        }
+        .navbar h1 { margin: 0; font-size: 22px; font-weight: 700; color: var(--accent-cyan); letter-spacing: 0.5px; }
+        .network-status { font-size: 13px; font-weight: 600; color: #34D399; display: flex; align-items: center; gap: 8px; }
+        .main-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .node-info-bar {
+            background-color: var(--bg-card); border: 1px solid var(--border-slate);
+            padding: 20px; border-radius: 12px; margin-bottom: 30px;
+        }
+        .node-id-title { font-size: 12px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; }
+        .node-id-value { font-size: 24px; font-weight: bold; margin-top: 5px; color: #FFF; }
+        .metrics-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;
+        }
+        .metric-card {
+            background-color: var(--bg-card); border: 1px solid var(--border-slate);
+            border-radius: 12px; padding: 25px; transition: transform 0.2s, border-color 0.2s;
+        }
+        .metric-card:hover { transform: translateY(-2px); border-color: var(--accent-cyan); }
+        .metric-title { font-size: 13px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { font-size: 36px; font-weight: 700; margin-top: 15px; color: #FFF; }
+        .metric-timestamp { font-size: 11px; color: var(--text-dim); margin-top: 15px; border-top: 1px solid var(--border-slate); padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h1>OMNI // MULTI-NODE TELEMETRY CONTROL</h1>
+        <div class="network-status">● GATEWAY ONLINE</div>
+    </div>
+
+    <div class="main-container">
+        <div class="node-info-bar">
+            <div class="node-id-title">Active Monitored Hardware Target</div>
+            <div class="node-id-value" id="device-title-id">Awaiting Inbound Stream Engine Frame...</div>
+        </div>
+
+        <div class="metrics-grid" id="universal-cards-container">
+            </div>
+    </div>
+
+    <script>
+        async function fetchUniversalStream() {
+            try {
+                const targetDevice = 'NODE_TEST_01';
+                const response = await fetch(`http://localhost:3000/api/v1/data/${targetDevice}`);
+                if (!response.ok) return;
+                const data = await response.json();
+
+                document.getElementById('device-title-id').innerText = data.device_id;
+                const cardGrid = document.getElementById('universal-cards-container');
+
+                if (data.metrics && Object.keys(data.metrics).length > 0) {
+                    cardGrid.innerHTML = ''; // Clear old layout structures
+
+                    // Build fresh responsive dashboard tiles dynamically for whatever variables exist
+                    for (const [metricKey, metricValue] of Object.entries(data.metrics)) {
+                        
+                        // Humanize labels smoothly (e.g. ambient_temp -> AMBIENT TEMP)
+                        const cleanTitle = metricKey.replace('_', ' ').toUpperCase();
+                        
+                        cardGrid.innerHTML += `
+                            <div class="metric-card">
+                                <div class="metric-title">${cleanTitle}</div>
+                                <div class="metric-value">${metricValue}</div>
+                                <div class="metric-timestamp">⚙ Live relational system variable</div>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch node frames from OMNI API hub:", err);
+            }
+        }
+
+        // Loop execution matrix frame polling updates every 2 seconds
+        setInterval(fetchUniversalStream, 2000);
+    </script>
+</body>
+</html>
