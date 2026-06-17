@@ -1,0 +1,9 @@
+# Ignore local node packages dependency folder
+node_modules/
+
+# Ignore local environment credential secrets
+.env
+
+# Ignore operating system garbage files
+.DS_Store
+Thumbs.db
